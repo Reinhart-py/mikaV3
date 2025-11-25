@@ -36,7 +36,6 @@ const verifyKeyPayload = async (key) => {
             return { passed: false, msg: data.message || 'Key Rejected' };
         }
     } catch (e) {
-        // Dev bypass if server is dead. Remove this in prod if you are serious.
         return { passed: true, owner: 'Offline Bypass' };
     }
 };

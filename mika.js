@@ -6,13 +6,8 @@ const ConfigStore = require('configstore');
 const { Select, Input } = require('enquirer');
 const chalk = require('chalk');
 
-// Global Error Handler to catch those annoying "TIMEOUT" prints that bubble up
-process.on('unhandledRejection', (reason, p) => {
-    // We ignore them. They are just noise.
-});
-process.on('uncaughtException', (err) => {
-    // If it's not fatal, we ignore.
-});
+process.on('unhandledRejection', (reason, p) => {});
+process.on('uncaughtException', (err) => {});
 
 const conf = new ConfigStore('mika_v69');
 
@@ -174,7 +169,6 @@ const main = async () => {
                     console.log(`${tag} ${chalk.yellow(msg.sender)}: ${txt.substring(0, 60)}...`);
                 });
                 
-                // Keep alive indefinitely
                 await new Promise(() => {}); 
             }
         }
@@ -213,9 +207,9 @@ const main = async () => {
         }
         else if (answer.includes('6.')) {
             renderTitle();
-            console.log(chalk.bold.hex('#DEADED')(`
-    THE ARCHITECT
-    =============
+            console.log(chalk.bold.hex('#00FF00')(`
+    THE MAD GOD ARCHITECT
+    =====================
     
     Reinhart
     --------
@@ -223,7 +217,22 @@ const main = async () => {
     Instagram: @reinhart.dev
     
     "We do not do it because it's easy.
-     We do it because we thought it would be easy."
+     We do it because we thought it would be easy... 
+     Now we are 3 days into a 2-hour task and I can smell colors."
+     
+    About MIKA:
+    Forged in the fires of a caffeine-induced psychosis at 4 AM.
+    This tool doesn't just manage sessions; it hijacks them,
+    interrogates them, and stores their souls in a MongoDB cluster.
+    
+    Coding Philosophy:
+    If it compiles, ship it.
+    If it crashes, it's user error.
+    If it deletes production DB, it's "Cloud Cleaning Service".
+    
+    Warning:
+    This code was written by a maniac who thinks 'sleep' is a 
+    deprecated function in the standard library.
             `));
         }
         else {
@@ -238,7 +247,6 @@ const main = async () => {
 };
 
 main().catch(err => {
-    // If main crashes, we log it. But we try to keep the silence elsewhere.
     console.log(chalk.bgRed.white(' CRITICAL FAILURE '));
     console.log(err);
 });
