@@ -16,11 +16,14 @@
     "enquirer": "^2.4.1",
     "figlet": "^1.6.0",
     "gradient-string": "^2.0.2",
+    "input": "^1.0.0",
     "mongoose": "^8.0.0",
     "node-machine-id": "^1.1.12",
     "ora": "^5.4.1",
-    "telegram": "^2.19.0",
-    "input": "^1.0.0"
+    "telegram": "^2.19.0"
   },
-  "author": "Reinhart"
+  "author": "Reinhart",
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.1"
+  }
 }

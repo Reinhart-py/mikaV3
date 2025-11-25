@@ -4,6 +4,8 @@ const crypto = require('crypto');
 const path = require('path');
 const axios = require('axios');
 
+const KEY_PATH = path.join(process.cwd(), 'license.key');
+
 const getMachineSoul = () => {
     try {
         const raw = machineIdSync({ original: true });
@@ -13,25 +15,40 @@ const getMachineSoul = () => {
     }
 };
 
-const vibeCheck = async () => {
-    const keyPath = path.join(process.cwd(), 'license.key');
-    
+const saveKey = async (key) => {
     try {
-        const key = (await fs.readFile(keyPath, 'utf8')).trim();
-        if (!key) throw new Error("Empty key file");
-        
-        const hwid = getMachineSoul();
-        const payload = { key, hwid, timestamp: Date.now() };
-        
-        try {
-            const { data } = await axios.post('https://jules-api.vercel.app/api/validate', payload, { timeout: 3000 });
-            return { passed: data.success, owner: data.owner || 'Ghost' };
-        } catch (e) {
-            return { passed: true, owner: 'Dev Mode (Offline)' };
-        }
-    } catch (e) {
-        return { passed: false, msg: "Where's the f*cking license key?" };
+        await fs.writeFile(KEY_PATH, key.trim(), 'utf8');
+        return true;
+    } catch {
+        return false;
     }
 };
 
-module.exports = { vibeCheck, getMachineSoul };
+const verifyKeyPayload = async (key) => {
+    const hwid = getMachineSoul();
+    const payload = { key, hwid, timestamp: Date.now() };
+    
+    try {
+        const { data } = await axios.post('https://jules-api.vercel.app/api/validate', payload, { timeout: 3000 });
+        if (data.success) {
+            return { passed: true, owner: data.owner || 'Ghost' };
+        } else {
+            return { passed: false, msg: data.message || 'Key Rejected' };
+        }
+    } catch (e) {
+        // Dev bypass if server is dead. Remove this in prod if you are serious.
+        return { passed: true, owner: 'Offline Bypass' };
+    }
+};
+
+const vibeCheck = async () => {
+    try {
+        const key = (await fs.readFile(KEY_PATH, 'utf8')).trim();
+        if (!key) return { passed: false, msg: "Key file is empty." };
+        return await verifyKeyPayload(key);
+    } catch (e) {
+        return { passed: false, msg: "Key file missing." };
+    }
+};
+
+module.exports = { vibeCheck, getMachineSoul, saveKey, verifyKeyPayload };

