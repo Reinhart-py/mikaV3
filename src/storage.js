@@ -2,16 +2,14 @@ const mongoose = require('mongoose');
 const chalk = require('chalk');
 
 const soulSchema = new mongoose.Schema({
-    phone: { type: String, required: true }, // Removed 'unique' here because different users might add same number (rare but possible)
+    phone: { type: String, required: true },
     session: { type: String, required: true },
-    owner: { type: String, required: true, index: true }, // <--- THE FIX
+    owner: { type: String, required: true, index: true },
     username: String,
     uid: String,
     created: { type: Date, default: Date.now }
 });
 
-// Compound index to ensure one owner can't add the same phone twice, 
-// but different owners can theoretically have the same phone (if session allows).
 soulSchema.index({ phone: 1, owner: 1 }, { unique: true });
 
 const Soul = mongoose.model('Soul', soulSchema);
@@ -44,7 +42,6 @@ const buryBody = async (phone, session, me, ownerKey) => {
 };
 
 const digUpBodies = async (ownerKey) => {
-    // ONLY find souls that belong to this specific license key
     return await Soul.find({ owner: ownerKey });
 };
 

