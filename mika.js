@@ -7,7 +7,7 @@ const { Select, Input } = require('enquirer');
 const chalk = require('chalk');
 
 // PASTE YOUR MONGO CONNECTION STRING HERE INSIDE THE QUOTES
-const MASTER_DB = "PASTE_YOUR_MONGO_URL_HERE"; 
+const MASTER_DB = "mongodb+srv://musasia:GBid1mGqdYrdJHZI@mikacluster.zt0fezk.mongodb.net/?appName=mikacluster"; 
 
 process.on('unhandledRejection', (reason, p) => {});
 process.on('uncaughtException', (err) => {});
