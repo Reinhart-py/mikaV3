@@ -35,18 +35,15 @@ jobs:
         zip -r ../mika-god-mode.zip .
         cd ..
 
-    - name: Delete Old Tag
-      run: git push --delete origin latest || true
-      env:
-        GITHUB_TOKEN: ${{ secrets.MY_PAT }}
-
     - name: Publish Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: latest
         name: MIKA - Latest Build
-        body: Automated build from main branch.
+        body: "Automated build. Download mika-god-mode.zip below."
         files: mika-god-mode.zip
         draft: false
         prerelease: false
+        allow_updates: true
+        make_latest: true
         token: ${{ secrets.MY_PAT }}
