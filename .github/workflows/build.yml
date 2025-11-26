@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Checkout Source
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -33,6 +35,11 @@ jobs:
         zip -r ../mika-god-mode.zip .
         cd ..
 
+    - name: Delete Old Tag
+      run: git push --delete origin latest || true
+      env:
+        GITHUB_TOKEN: ${{ secrets.MY_PAT }}
+
     - name: Publish Release
       uses: softprops/action-gh-release@v1
       with:
@@ -42,5 +49,4 @@ jobs:
         files: mika-god-mode.zip
         draft: false
         prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.MY_PAT }}
