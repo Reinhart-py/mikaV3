@@ -1,6 +1,6 @@
-# MIKA v69.0 - The God-Tier Session Manager
+# MIKA v69.0 - the lame session manager with lame CLI
 
-Look, I built this at 4 AM fueled by three cans of energy drinks and pure hatred for manual session management. If you are reading this, you probably hate doing things manually too. Welcome to the club.
+Look, I built this at 4 AM drunk on three cans of energy drinks and pure hatred for manual session management. If you are reading this, you probably hate doing things manually too. Welcome to the club.
 
 MIKA is a cloud-native, MongoDB-backed Telegram session hijacker... er, *manager*. It persists sessions even if you throw your laptop out the window (as long as you have the database credentials).
 
@@ -15,7 +15,7 @@ MIKA is a cloud-native, MongoDB-backed Telegram session hijacker... er, *manager
 
 1.  `npm install` - Don't ask me what dependencies are. Just do it.
 2.  `node mika.js` - Launch the beast.
-3.  Follow the wizard. If you fail, read the error message. It's in English.
+3.  Follow the menu. If you fail, read the error message. It's in English.
 
 ## Requirements
 
